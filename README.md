@@ -14,4 +14,4 @@ You can change elevators number by clicking 'Back' button and selecting it once 
 To run the app locally on VSCode:
 * Clone repo 
 * Write `npm i` in the terminal
-* Write npm run serve
+* Write `npm run serve` in the terminal
