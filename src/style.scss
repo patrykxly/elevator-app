@@ -1,0 +1,164 @@
+$primary-color: #1f2833;
+$secondary-color: #45a29e;
+
+@mixin primary-button {
+  background-color: $secondary-color;
+  border: 1px solid $secondary-color;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: 0.5s;
+  color: white;
+  &:hover {
+    background-color: $primary-color;
+    color: $secondary-color;
+  }
+}
+
+body {
+  background-color: $primary-color;
+  color: white;
+  font-size: 2em;
+  overflow-y: hidden;
+}
+
+#title {
+  text-align: center;
+  margin: 0 0 0.3em 0;
+}
+
+.floor-levels-picker-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+
+  #floor-levels-options {
+    padding: 0.5em 1em;
+  }
+
+  .submit-btn {
+    @include primary-button();
+    padding: 0.6em 1em;
+  }
+
+  .levels-picker {
+    margin-top: 1em;
+  }
+}
+
+.elevator-selector-container {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: center;
+  .select-elevator-text,
+  .elevator-view {
+    margin: 1em 0.2em;
+    font-size: 0.8em;
+    padding: 0.1em 0.3em;
+  }
+  .elevator-view {
+    @include primary-button();
+  }
+  .current-elevator {
+    background-color: $primary-color;
+  }
+}
+
+.elevator-ui-wrapper {
+  display: flex;
+  flex-direction: column;
+  text-align: center;
+  align-items: center;
+  line-height: 0.12em;
+  cursor: default;
+  .elevator-ui-container {
+    border: 3px solid $primary-color;
+    background-color: #ffff;
+    color: $primary-color;
+    border-radius: 10px;
+  }
+  .current-floor {
+    background-color: $secondary-color;
+    color: white;
+    padding: 0.8em 1em;
+    border-radius: 10%;
+  }
+  .floor-num-container {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+  }
+  .elevator-icon {
+    position: absolute;
+    cursor: pointer;
+    color: rgb(231, 231, 231);
+    right: 41%;
+    height: 1.5em;
+    z-index: 1;
+  }
+  .step-btn {
+    @include primary-button();
+    margin-top: 0.5em;
+    padding: 0.5em 2em;
+    font-weight: 500;
+  }
+}
+
+.back-btn {
+  display: flex;
+  flex-direction: row;
+  width: 95px;
+  cursor: pointer;
+  margin-left: 0.5em;
+  .back-txt {
+    font-size: 0.9em;
+    margin: 0 0 0 0.2em;
+  }
+}
+
+#choose-floor-dialog {
+  border: 3px ridge black;
+  margin-top: 10%;
+  padding: 1em 5em;
+  background-color: $secondary-color;
+  color: white;
+  z-index: 2;
+  h3 {
+    margin: 0 0 1em 0;
+    text-align: center;
+  }
+  .choose-floor-buttons-container {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    .choose-floor-button {
+      padding: 0.5em 0.8em;
+      margin: 0 0.5em;
+      color: white;
+      font-size: 0.5em;
+      background-color: $primary-color;
+      border: 1px solid $primary-color;
+      cursor: pointer;
+      transition: 0.3s;
+      &:hover {
+        background-color: #0b0c10;
+      }
+    }
+  }
+  .cancel-dialog-btn {
+    float: right;
+    padding: .5em 1em;
+    margin-top: 1.5em;
+    color: white;
+    background-color: $primary-color;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: .5s;
+    &:hover {
+      background-color: black;
+    }
+  }
+}
