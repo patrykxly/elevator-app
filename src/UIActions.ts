@@ -220,15 +220,14 @@ function pickupOnFloorBtnClick(
   const targetFloor = Number(floorBtn.textContent as string);
   if (currentFloor !== Number(clickedFloor)) icon.classList.add("waiting");
 
-  Array.from(document.querySelectorAll(".floor-number"))
-    .find((num) => num.textContent === floorBtn.textContent)
-    ?.parentNode?.firstElementChild?.classList.add("target");
+  addTargetClassToButton(Number(floorBtn.textContent));
   elevatorSystem.pickup(currentElevatorNum, Number(clickedFloor), targetFloor);
 }
 
 function setCurrentElevatorFloorOnElevatorChange(): void {
   resetStepBtnEventListener();
   const currentElevator: Elevator = elevatorSystem.current(currentElevatorNum);
+  setFloorButtonsAfterElevatorViewChange(currentElevator);
   currentFloor = currentElevator.currentFloor;
   const currentFloorElement: Element | undefined = Array.from(
     document.querySelectorAll(".floor-number")
@@ -345,4 +344,29 @@ function createElevatorViewsButtons(
     });
     elevatorSelectorContainer.appendChild(elevatorView);
   }
+}
+
+function addTargetClassToButton(floorNum: number): void {
+  Array.from(document.querySelectorAll(".floor-number"))
+    .find((num) => Number(num.textContent) === floorNum)
+    ?.parentNode?.firstElementChild?.classList.add("target");
+}
+
+function addWaitingClassToButton(floorNum: number): void {
+  Array.from(document.querySelectorAll(".floor-number"))
+    .find((num) => Number(num.textContent) === floorNum)
+    ?.parentNode?.firstElementChild?.classList.add("waiting");
+}
+
+function setFloorButtonsAfterElevatorViewChange(
+  currentElevator: Elevator
+): void {
+  Array.from(document.querySelectorAll(".elevator-icon")).forEach((icon) =>
+    icon.setAttribute("class", "elevator-icon")
+  );
+  currentElevator.waitingPeople.forEach((person) => {
+    addTargetClassToButton(person.targetFloor);
+    if (currentElevator.currentFloor !== person.currentFloor)
+      addWaitingClassToButton(person.currentFloor);
+  });
 }
