@@ -97,7 +97,13 @@ body {
     right: 41%;
     height: 1.5em;
     z-index: 1;
-  }
+    &.waiting {
+      color:rgb(162, 162, 46);
+    }
+    &.target {
+      color: red;
+    }
+  } 
   .step-btn {
     @include primary-button();
     margin-top: 0.5em;

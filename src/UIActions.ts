@@ -76,6 +76,24 @@ export function getChosenElevatorsAmount(): number {
   return Number((selectList as HTMLInputElement).value);
 }
 
+export function deleteTargetFloorClass(targetFloor: number): void {
+  const targetFloorElement = Array.from(
+    document.querySelectorAll(".floor-number")
+  ).find((floorNum: Element) => {
+    return Number(floorNum.textContent as string) === targetFloor;
+  });
+  if (
+    targetFloorElement?.parentNode?.firstElementChild?.classList.contains(
+      "target"
+    )
+  ) {
+    targetFloorElement.parentNode.firstElementChild.setAttribute(
+      "class",
+      "elevator-icon"
+    );
+  }
+}
+
 function createBackButton(): void {
   if (document.getElementsByClassName("back-btn").length !== 0) {
     const existingBtnElement: HTMLElement = document.getElementsByClassName(
@@ -129,13 +147,13 @@ function addListenerToElevatorIcon(iconClassName: string): void {
     document.querySelectorAll(`.${iconClassName}`).forEach((icon) => {
       icon.addEventListener("click", () => {
         const clickedFloor = icon.parentNode?.lastElementChild?.textContent;
-        openModalDialog(clickedFloor as string);
+        openModalDialog(clickedFloor as string, icon);
       });
     });
   }, 0);
 }
 
-function openModalDialog(clickedFloor: string): void {
+function openModalDialog(clickedFloor: string, icon: Element): void {
   const mainEl = document.getElementsByTagName("main")[0] as HTMLElement;
   mainEl.insertAdjacentHTML(
     "afterbegin",
@@ -147,7 +165,7 @@ function openModalDialog(clickedFloor: string): void {
     </dialog>
   `
   );
-  addFloorButtonsInDialog(clickedFloor);
+  addFloorButtonsInDialog(clickedFloor, icon);
 }
 
 function closeModalDialog(): void {
@@ -158,7 +176,7 @@ function closeModalDialog(): void {
   dialogElement.close();
 }
 
-function addFloorButtonsInDialog(clickedFloor: string): void {
+function addFloorButtonsInDialog(clickedFloor: string, icon: Element): void {
   const chooseFloorForm =
     document.getElementsByClassName("choose-floor-form")[0];
   const chooseFloorButtonsContainer = createElementWithClassName(
@@ -172,7 +190,7 @@ function addFloorButtonsInDialog(clickedFloor: string): void {
       "choose-floor-button",
       String(i)
     );
-    addFloorBtnEventListener(floorBtn, clickedFloor);
+    addFloorBtnEventListener(floorBtn, clickedFloor, icon);
     chooseFloorButtonsContainer.appendChild(floorBtn);
   }
   chooseFloorForm.appendChild(chooseFloorButtonsContainer);
@@ -186,18 +204,25 @@ function addFloorButtonsInDialog(clickedFloor: string): void {
 
 function addFloorBtnEventListener(
   floorBtn: HTMLElement,
-  clickedFloor: string
+  clickedFloor: string,
+  icon: Element
 ): void {
   floorBtn.addEventListener("click", () =>
-    pickupOnFloorBtnClick(floorBtn, clickedFloor)
+    pickupOnFloorBtnClick(floorBtn, clickedFloor, icon)
   );
 }
 
 function pickupOnFloorBtnClick(
   floorBtn: HTMLElement,
-  clickedFloor: string
+  clickedFloor: string,
+  icon: Element
 ): void {
   const targetFloor = Number(floorBtn.textContent as string);
+  if (currentFloor !== Number(clickedFloor)) icon.classList.add("waiting");
+
+  Array.from(document.querySelectorAll(".floor-number"))
+    .find((num) => num.textContent === floorBtn.textContent)
+    ?.parentNode?.firstElementChild?.classList.add("target");
   elevatorSystem.pickup(currentElevatorNum, Number(clickedFloor), targetFloor);
 }
 
@@ -236,11 +261,22 @@ function setNextFloor(): void {
   currentFloor = elevatorSystem.step(currentElevatorNum);
   document.getElementsByClassName("current-floor")[0].className =
     "floor-number";
-  Array.from(document.querySelectorAll(".floor-number"))
-    .find((floorNum: Element) => {
-      return Number(floorNum.textContent as string) === currentFloor;
-    })
-    ?.classList.add("current-floor");
+  const newCurrentFloor = Array.from(
+    document.querySelectorAll(".floor-number")
+  ).find((floorNum: Element) => {
+    return Number(floorNum.textContent as string) === currentFloor;
+  });
+  newCurrentFloor?.classList.add("current-floor");
+  if (
+    newCurrentFloor?.parentNode?.firstElementChild?.classList.contains(
+      "waiting"
+    )
+  ) {
+    newCurrentFloor.parentNode.firstElementChild.setAttribute(
+      "class",
+      "elevator-icon"
+    );
+  }
 }
 
 function resetValues(elevatorsAmount: number): void {
