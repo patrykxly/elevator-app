@@ -106,15 +106,21 @@ function createBackButton(): void {
 }
 
 function createQueueButton(): void {
-  const queueButton: HTMLElement = createElementWithClassName(
-    "button",
-    "queue-btn",
-    "View queue"
-  );
-  queueButton.addEventListener("click", () => {
-    openPeopleQueue();
-  });
-  document.getElementsByClassName("nav-container")[0].appendChild(queueButton);
+  if(document.getElementsByClassName('queue-btn').length === 0) {
+    const queueButton: HTMLElement = createElementWithClassName(
+      "button",
+      "queue-btn",
+      "View queue"
+    );
+    queueButton.addEventListener("click", () => {
+      openPeopleQueue();
+    });
+    document.getElementsByClassName("nav-container")[0].appendChild(queueButton);
+  }
+  else {
+    (document.getElementsByClassName('queue-btn')[0] as HTMLElement).style.display = "block";
+  }
+
 }
 
 function createElementWithClassName(
@@ -224,7 +230,8 @@ function addBackButtonEventListener(backBtnElement: HTMLElement): void {
     hideElements(
       "elevator-selector-container",
       "elevator-ui-wrapper",
-      "back-btn"
+      "back-btn",
+      "queue-btn"
     );
     closeModalDialog();
   });
@@ -279,14 +286,7 @@ function addListenerToElevatorIcon(iconClassName: string): void {
 
 function addContentToQueueDialog(): void {
   const queueDialog = document.getElementById("queue-dialog");
-  const closeButton: HTMLElement = createElementWithClassName(
-    "button",
-    "queue-dialog-close-btn",
-    "x"
-  );
-  closeButton.addEventListener("click", () => {
-    (queueDialog as HTMLDialogElement).close();
-  });
+  const closeButton: HTMLElement = getCloseQueueButton(queueDialog as HTMLDialogElement);
   queueDialog?.insertAdjacentElement('afterbegin', closeButton);
   const waitingPeople = elevatorSystem.peopleQueue(currentElevatorNum);
   waitingPeople.forEach((person, index) => {
@@ -308,6 +308,18 @@ function addContentToQueueDialog(): void {
     waitingPeopleContainer.append(personNum, personCurrentFloor, personTargetFloor);
     queueDialog?.append(waitingPeopleContainer);
   });
+}
+
+function getCloseQueueButton(queueDialog: HTMLDialogElement): HTMLElement {
+  const closeButton: HTMLElement = createElementWithClassName(
+    "button",
+    "queue-dialog-close-btn",
+    "x"
+  );
+  closeButton.addEventListener("click", () => {
+    queueDialog.close();
+  });
+  return closeButton;
 }
 
 function hideElements(...args: string[]): void {
