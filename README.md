@@ -17,3 +17,4 @@ To run the app locally on VSCode:
 * Clone the repo and go to the repo folder
 * Write `npm i` in the terminal
 * Write `npm run serve` in the terminal
+* Enter `localhost:8080 ` in the browser
