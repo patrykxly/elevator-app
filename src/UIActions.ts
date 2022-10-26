@@ -287,7 +287,6 @@ function addContentToQueueDialog(): void {
   closeButton.addEventListener("click", () => {
     (queueDialog as HTMLDialogElement).close();
   });
-  // insertAfter(queueDialog as HTMLElement, closeButton)
   queueDialog?.insertAdjacentElement('afterbegin', closeButton);
   const waitingPeople = elevatorSystem.peopleQueue(currentElevatorNum);
   waitingPeople.forEach((person, index) => {
