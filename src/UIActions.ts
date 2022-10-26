@@ -68,6 +68,7 @@ function createElevatorsViews(elevatorsAmount: number): void {
 
 function createElevatorsUI() {
   createBackButton();
+  createQueueButton();
   const titleElement: HTMLElement | null = document.getElementById("title");
   const elevatorUIWrapper: HTMLElement = createElementWithClassName(
     "div",
@@ -85,6 +86,7 @@ function createElevatorsUI() {
 }
 
 function createBackButton(): void {
+  const nav = createElementWithClassName("div", "nav-container");
   if (document.getElementsByClassName("back-btn").length !== 0) {
     const existingBtnElement: HTMLElement = document.getElementsByClassName(
       "back-btn"
@@ -95,23 +97,24 @@ function createBackButton(): void {
   }
   const backBtn = SVGICON_BACK;
   const mainContainer: HTMLElement = document.getElementsByTagName("main")[0];
-  mainContainer.insertAdjacentHTML("beforebegin", backBtn);
+  nav.insertAdjacentHTML("afterbegin", backBtn);
+  mainContainer.insertAdjacentElement("beforebegin", nav);
   const backBtnElement: HTMLElement = document.getElementsByClassName(
     "back-btn"
   )[0] as HTMLElement;
-  backBtnElement.addEventListener("click", () => {
-    (
-      document.getElementsByClassName(
-        "floor-levels-picker-container"
-      )[0] as HTMLElement
-    ).style.display = "block";
-    hideElements(
-      "elevator-selector-container",
-      "elevator-ui-wrapper",
-      "back-btn"
-    );
-    closeModalDialog();
+  addBackButtonEventListener(backBtnElement);
+}
+
+function createQueueButton(): void {
+  const queueButton: HTMLElement = createElementWithClassName(
+    "button",
+    "queue-btn",
+    "View queue"
+  );
+  queueButton.addEventListener("click", () => {
+    openPeopleQueue();
   });
+  document.getElementsByClassName("nav-container")[0].appendChild(queueButton);
 }
 
 function createElementWithClassName(
@@ -170,13 +173,7 @@ function createElevatorViewsButtons(
         String(i)
       );
     }
-    elevatorView.addEventListener("click", () => {
-      document.getElementsByClassName("current-elevator")[0].className =
-        "elevator-view";
-      elevatorView.classList.add("current-elevator");
-      currentElevatorNum = Number(elevatorView.textContent as string);
-      setCurrentElevatorFloorOnElevatorChange();
-    });
+    addElevatorViewEventListener(elevatorView);
     elevatorSelectorContainer.appendChild(elevatorView);
   }
 }
@@ -217,6 +214,32 @@ function addFloorBtnEventListener(
   );
 }
 
+function addBackButtonEventListener(backBtnElement: HTMLElement): void {
+  backBtnElement.addEventListener("click", () => {
+    (
+      document.getElementsByClassName(
+        "floor-levels-picker-container"
+      )[0] as HTMLElement
+    ).style.display = "block";
+    hideElements(
+      "elevator-selector-container",
+      "elevator-ui-wrapper",
+      "back-btn"
+    );
+    closeModalDialog();
+  });
+}
+
+function addElevatorViewEventListener(elevatorView: HTMLElement): void {
+  elevatorView.addEventListener("click", () => {
+    document.getElementsByClassName("current-elevator")[0].className =
+      "elevator-view";
+    elevatorView.classList.add("current-elevator");
+    currentElevatorNum = Number(elevatorView.textContent as string);
+    setCurrentElevatorFloorOnElevatorChange();
+  });
+}
+
 function addStepButton(elementBeforeBtn: HTMLElement): void {
   const stepButton: HTMLElement = createElementWithClassName(
     "button",
@@ -243,6 +266,51 @@ function addWaitingClassToButton(floorNum: number): void {
     ?.parentNode?.firstElementChild?.classList.add("waiting");
 }
 
+function addListenerToElevatorIcon(iconClassName: string): void {
+  setTimeout(() => {
+    document.querySelectorAll(`.${iconClassName}`).forEach((icon) => {
+      icon.addEventListener("click", () => {
+        const clickedFloor = icon.parentNode?.lastElementChild?.textContent;
+        openModalDialog(clickedFloor as string, icon);
+      });
+    });
+  }, 0);
+}
+
+function addContentToQueueDialog(): void {
+  const queueDialog = document.getElementById("queue-dialog");
+  const closeButton: HTMLElement = createElementWithClassName(
+    "button",
+    "queue-dialog-close-btn",
+    "x"
+  );
+  closeButton.addEventListener("click", () => {
+    (queueDialog as HTMLDialogElement).close();
+  });
+  // insertAfter(queueDialog as HTMLElement, closeButton)
+  queueDialog?.insertAdjacentElement('afterbegin', closeButton);
+  const waitingPeople = elevatorSystem.peopleQueue(currentElevatorNum);
+  waitingPeople.forEach((person, index) => {
+    const waitingPeopleContainer = createElementWithClassName(
+      "div",
+      "waiting-people-container"
+    );
+    const personNum = createElementWithClassName('p', 'person-num', String(index)+".");
+    const personCurrentFloor = createElementWithClassName(
+      "div",
+      "person-current-floor",
+      "Current floor - " + String(person.currentFloor)
+    );
+    const personTargetFloor = createElementWithClassName(
+      "div",
+      "person-current-floor",
+      "Target floor - " + String(person.targetFloor)
+    );
+    waitingPeopleContainer.append(personNum, personCurrentFloor, personTargetFloor);
+    queueDialog?.append(waitingPeopleContainer);
+  });
+}
+
 function hideElements(...args: string[]): void {
   for (const el of args) {
     (document.getElementsByClassName(el)[0] as HTMLElement).style.display =
@@ -260,17 +328,6 @@ function insertAfter(
   referenceNode: HTMLElement | null
 ): void {
   referenceNode?.parentNode?.insertBefore(newNode, referenceNode.nextSibling);
-}
-
-function addListenerToElevatorIcon(iconClassName: string): void {
-  setTimeout(() => {
-    document.querySelectorAll(`.${iconClassName}`).forEach((icon) => {
-      icon.addEventListener("click", () => {
-        const clickedFloor = icon.parentNode?.lastElementChild?.textContent;
-        openModalDialog(clickedFloor as string, icon);
-      });
-    });
-  }, 0);
 }
 
 function openModalDialog(clickedFloor: string, icon: Element): void {
@@ -294,6 +351,19 @@ function closeModalDialog(): void {
   ) as HTMLDialogElement;
   if (!dialogElement) return;
   dialogElement.close();
+}
+
+function openPeopleQueue(): void {
+  const mainEl = document.getElementsByTagName("main")[0] as HTMLElement;
+  mainEl.insertAdjacentHTML(
+    "afterbegin",
+    `
+    <dialog id = "queue-dialog" open>
+      <h3>Queue</h3>
+    </dialog>
+  `
+  );
+  addContentToQueueDialog();
 }
 
 function onFloorBtnClick(

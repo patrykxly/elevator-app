@@ -54,17 +54,6 @@ export const elevatorSystem = (function () {
       : Status.waiting;
   }
 
-  function getDirection(
-    newCurrentFloor: number,
-    targetFloor: number,
-    currentFloor: number
-  ) {
-    if (currentFloor && currentFloor !== newCurrentFloor) {
-      return newCurrentFloor > currentFloor ? Direction.Up : Direction.Down;
-    }
-    return newCurrentFloor > targetFloor ? Direction.Down : Direction.Up;
-  }
-
   function getNextTargetFloor(elevatorId: number): number {
     const currentElevator: Elevator = elevatorSystem.current(elevatorId);
     const pendingFloors: Array<number> = currentElevator.waitingPeople.map(
@@ -104,7 +93,10 @@ export const elevatorSystem = (function () {
     } else if (currentElevator.waitingPeople.length > 1) {
       let newTargetFloor = currentElevator.targetFloor;
       let peopleInElevator: Array<WaitingPerson> = [];
-      let direction = currentElevator.direction;
+      let direction;
+      if (currentElevator.currentFloor === 5) direction = Direction.Down;
+      else if (currentElevator.currentFloor === 0) direction = Direction.Up;
+      else direction = currentElevator.direction;
       let peopleInQueueAfterReachingFloor: Array<WaitingPerson> = [];
 
       if (
@@ -124,7 +116,7 @@ export const elevatorSystem = (function () {
           direction,
           currentElevator
         );
-      else {
+      if (peopleInElevator.length !== 0) {
         newTargetFloor =
           direction === Direction.Up
             ? Math.max(...peopleInElevator.map((person) => person.targetFloor))
@@ -138,6 +130,11 @@ export const elevatorSystem = (function () {
         peopleInQueueAfterReachingFloor = getPeopleInQueueAfterReachingFloor(
           direction,
           currentElevator.waitingPeople
+        );
+        pushPeopleNotIncludedAfterGettingIntoElevator(
+          currentElevator,
+          peopleInElevator,
+          peopleInQueueAfterReachingFloor
         );
       }
       if (
@@ -194,6 +191,33 @@ export const elevatorSystem = (function () {
               person.currentFloor === currentElevator.currentFloor) &&
             person.targetFloor < person.currentFloor
         );
+  }
+
+  function getDirection(
+    newCurrentFloor: number,
+    targetFloor: number,
+    currentFloor: number
+  ): Direction {
+    if (currentFloor && currentFloor !== newCurrentFloor) {
+      return newCurrentFloor > currentFloor ? Direction.Up : Direction.Down;
+    }
+    return newCurrentFloor > targetFloor ? Direction.Down : Direction.Up;
+  }
+
+  function pushPeopleNotIncludedAfterGettingIntoElevator(
+    currentElevator: Elevator,
+    peopleInElevator: Array<WaitingPerson>,
+    peopleInQueueAfterReachingFloor: Array<WaitingPerson>
+  ): void {
+    const peopleNotIncluded = peopleInElevator.filter(
+      (person) =>
+        person.status === Status.going &&
+        person.currentFloor ===
+          currentElevator.currentFloor + currentElevator.direction
+    );
+    peopleNotIncluded.forEach((person) =>
+      peopleInQueueAfterReachingFloor.push(person)
+    );
   }
 
   function updateElevatorOnPickup(currentElevator: Elevator): void {
@@ -337,8 +361,8 @@ export const elevatorSystem = (function () {
       return findElevatorById(elevatorId) as Elevator;
     },
 
-    status(): Array<Elevator> {
-      return elevators;
-    },
+    peopleQueue(elevatorId: number): Array<WaitingPerson> {
+      return this.current(elevatorId).waitingPeople;
+    }
   };
 })();
