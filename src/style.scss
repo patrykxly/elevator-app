@@ -112,15 +112,25 @@ body {
   }
 }
 
-.back-btn {
+.nav-container {
   display: flex;
   flex-direction: row;
-  width: 95px;
-  cursor: pointer;
-  margin-left: 0.5em;
-  .back-txt {
-    font-size: 0.9em;
-    margin: 0 0 0 0.2em;
+  .back-btn {
+    display: flex;
+    flex-direction: row;
+    width: 95px;
+    cursor: pointer;
+    margin-left: 0.5em;
+    .back-txt {
+      font-size: 0.9em;
+      margin: 0 0 0 0.2em;
+    }
+  }
+  .queue-btn {  
+    display: block;
+    margin-left: auto;
+    margin-right: 1em;
+    @include primary-button();
   }
 }
 
@@ -165,6 +175,36 @@ body {
     transition: .5s;
     &:hover {
       background-color: black;
+    }
+  }
+}
+
+#queue-dialog {
+  z-index: 2;
+  background-color: $secondary-color;
+  padding: 0;
+  overflow-y: auto;
+  max-height: 500px;
+  .queue-dialog-close-btn {
+    float: right;
+    color: black;
+    border: none;
+    background-color: $secondary-color;
+    font-size: 1em;
+    padding:0;
+    cursor: pointer;
+    margin: .5em 1em 0 0;
+  }
+  h3 {
+    padding: 0 3em;
+  }
+  .waiting-people-container {
+    border: 1px solid black;
+    margin: .5em;
+    padding: .1em .5em;
+    font-size: .8em;
+    p {
+      margin: 0 .5em 0 0;
     }
   }
 }
