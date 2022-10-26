@@ -2,7 +2,7 @@ import { Direction } from "./enums/DirectionEnum";
 import { Status } from "./enums/StatusEnum";
 import { Elevator } from "./models/ElevatorModel";
 import { WaitingPerson } from "./models/WaitingPersonModel";
-import { deleteTargetFloorClass } from "./UIActions";
+import { deleteTargetFloorClass, deleteWaitingFloorClass } from "./UIActions";
 
 export const elevatorSystem = (function () {
   const elevators: Array<Elevator> = [];
@@ -13,7 +13,7 @@ export const elevatorSystem = (function () {
       currentFloor: 0,
       targetFloor: 0,
       direction: Direction.Default,
-      waitingPeople: []
+      waitingPeople: [],
     };
     return elevator;
   }
@@ -23,14 +23,35 @@ export const elevatorSystem = (function () {
     currentFloor: number,
     targetFloor: number
   ): void {
+    const currentElevator: Elevator = elevatorSystem.current(elevatorId);
     const waitingPersonData: WaitingPerson = {
       Id: crypto.randomUUID(),
       elevatorId: elevatorId,
       currentFloor: currentFloor,
       targetFloor: targetFloor,
-      status: Status.waiting,
+      status: setNewPersonStatus(currentElevator, currentFloor, targetFloor),
     };
-    elevatorSystem.current(elevatorId).waitingPeople.push(waitingPersonData);
+    currentElevator.waitingPeople.push(waitingPersonData);
+  }
+
+  function setNewPersonStatus(
+    currentElevator: Elevator,
+    currentFloor: number,
+    targetFloor: number
+  ): Status {
+    if (
+      currentElevator.direction === Direction.Up ||
+      currentElevator.direction === Direction.Default
+    ) {
+      return currentFloor === currentElevator.currentFloor &&
+        targetFloor > currentFloor
+        ? Status.going
+        : Status.waiting;
+    }
+    return currentFloor === currentElevator.currentFloor &&
+      targetFloor < currentFloor
+      ? Status.going
+      : Status.waiting;
   }
 
   function getDirection(
@@ -38,7 +59,7 @@ export const elevatorSystem = (function () {
     targetFloor: number,
     currentFloor: number
   ) {
-    if (currentFloor) {
+    if (currentFloor && currentFloor !== newCurrentFloor) {
       return newCurrentFloor > currentFloor ? Direction.Up : Direction.Down;
     }
     return newCurrentFloor > targetFloor ? Direction.Down : Direction.Up;
@@ -49,12 +70,18 @@ export const elevatorSystem = (function () {
     const pendingFloors: Array<number> = currentElevator.waitingPeople.map(
       (person) => person.currentFloor
     );
-    const waitingFloors: Array<number> = currentElevator.waitingPeople.map(
+    const targetFloors: Array<number> = currentElevator.waitingPeople.map(
       (person) => person.targetFloor
     );
     if (currentElevator.waitingPeople.length === 0) return -1;
-    if (currentElevator.waitingPeople.length === 1 && pendingFloors.length === 1) {
-      if (currentElevator.waitingPeople[0].currentFloor === currentElevator.currentFloor) {
+    if (
+      currentElevator.waitingPeople.length === 1 &&
+      pendingFloors.length === 1
+    ) {
+      if (
+        currentElevator.waitingPeople[0].currentFloor ===
+        currentElevator.currentFloor
+      ) {
         currentElevator.waitingPeople[0].status = Status.going;
       }
       if (isPersonLeavingElevator(currentElevator)) {
@@ -63,8 +90,9 @@ export const elevatorSystem = (function () {
         return -1;
       }
       if (pendingFloors[0] === currentElevator.currentFloor) {
-        currentElevator.targetFloor = currentElevator.waitingPeople[0].targetFloor;
-        return waitingFloors[0];
+        currentElevator.targetFloor =
+          currentElevator.waitingPeople[0].targetFloor;
+        return targetFloors[0];
       }
       if (isPersonWaiting(currentElevator, pendingFloors)) {
         return pendingFloors[0];
@@ -74,37 +102,57 @@ export const elevatorSystem = (function () {
         return -2;
       }
     } else if (currentElevator.waitingPeople.length > 1) {
-      const direction = currentElevator.direction;
       let newTargetFloor = currentElevator.targetFloor;
+      let peopleInElevator: Array<WaitingPerson> = [];
+      let direction = currentElevator.direction;
+      let peopleInQueueAfterReachingFloor: Array<WaitingPerson> = [];
 
-      const peopleInQueueAfterReachingFloor =
-        getPeopleInQueueAfterReachingFloor(direction, currentElevator.waitingPeople);
-    
-      if (peopleInQueueAfterReachingFloor.length !== currentElevator.waitingPeople.length) {
+      if (
+        new Set(
+          currentElevator.waitingPeople.map((person) => person.currentFloor)
+        ).size === 1 &&
+        isPersonPickedUp(currentElevator, pendingFloors)
+      ) {
+        updateElevatorOnPickup(currentElevator);
+        peopleInElevator = currentElevator.waitingPeople;
+        peopleInQueueAfterReachingFloor = currentElevator.waitingPeople;
+        return -2;
+      }
+
+      if (peopleInElevator.length === 0)
+        peopleInElevator = getPeopleInElevatorAfterReachingFloor(
+          direction,
+          currentElevator
+        );
+      else {
+        newTargetFloor =
+          direction === Direction.Up
+            ? Math.max(...peopleInElevator.map((person) => person.targetFloor))
+            : Math.min(...peopleInElevator.map((person) => person.targetFloor));
+        currentElevator.targetFloor = newTargetFloor;
+        peopleInElevator.map((person) => (person.status = Status.going));
+        direction = currentElevator.direction;
+      }
+      if (peopleInQueueAfterReachingFloor.length === 0) {
+        direction = currentElevator.direction;
+        peopleInQueueAfterReachingFloor = getPeopleInQueueAfterReachingFloor(
+          direction,
+          currentElevator.waitingPeople
+        );
+      }
+      if (
+        peopleInQueueAfterReachingFloor.length !==
+        currentElevator.waitingPeople.length
+      ) {
         currentElevator.direction === Direction.Up
           ? deleteTargetFloorClass(currentElevator.currentFloor + 1)
           : deleteTargetFloorClass(currentElevator.currentFloor - 1);
+        currentElevator.waitingPeople = peopleInQueueAfterReachingFloor;
+        if (currentElevator.waitingPeople.length === 1)
+          currentElevator.targetFloor =
+            currentElevator.waitingPeople[0].targetFloor;
       }
 
-      currentElevator.waitingPeople = peopleInQueueAfterReachingFloor;
-
-      const peopleAtTheSameFloor = getPeopleOnTheSameFloorAfterReachingFloor(
-        direction,
-        currentElevator
-      );
-
-      if (peopleAtTheSameFloor.length !== 0) {
-        newTargetFloor =
-          direction === Direction.Up
-            ? Math.max(
-                ...peopleAtTheSameFloor.map((person) => person.targetFloor)
-              )
-            : Math.min(
-                ...peopleAtTheSameFloor.map((person) => person.targetFloor)
-              );
-        currentElevator.targetFloor = newTargetFloor;
-        peopleAtTheSameFloor.map((person) => (person.status = Status.going));
-      }
       return newTargetFloor;
     }
     return -1;
@@ -129,19 +177,21 @@ export const elevatorSystem = (function () {
         });
   }
 
-  function getPeopleOnTheSameFloorAfterReachingFloor(
+  function getPeopleInElevatorAfterReachingFloor(
     direction: Direction,
     currentElevator: Elevator
   ): Array<WaitingPerson> {
     return direction === Direction.Up
       ? currentElevator.waitingPeople.filter(
           (person) =>
-            person.currentFloor === currentElevator.currentFloor &&
+            (person.currentFloor === currentElevator.currentFloor + 1 ||
+              person.currentFloor === currentElevator.currentFloor) &&
             person.targetFloor > person.currentFloor
         )
       : currentElevator.waitingPeople.filter(
           (person) =>
-            person.currentFloor === currentElevator.currentFloor &&
+            (person.currentFloor === currentElevator.currentFloor - 1 ||
+              person.currentFloor === currentElevator.currentFloor) &&
             person.targetFloor < person.currentFloor
         );
   }
@@ -149,8 +199,9 @@ export const elevatorSystem = (function () {
   function updateElevatorOnPickup(currentElevator: Elevator): void {
     const waitingPeople: Array<WaitingPerson> = currentElevator.waitingPeople;
     const previousTargetFloor = waitingPeople[0].currentFloor;
+    deleteWaitingFloorClass(waitingPeople[0].currentFloor);
     waitingPeople[0].currentFloor = waitingPeople[0].targetFloor;
-    waitingPeople[0].status = Status.going;
+    waitingPeople.map((person) => (person.status = Status.going));
     elevatorSystem.update(
       currentElevator.Id,
       previousTargetFloor,
@@ -241,16 +292,17 @@ export const elevatorSystem = (function () {
       currentFloor?: number
     ): void {
       const currentElevator = this.current(elevatorId);
-      currentElevator.waitingPeople
-        .filter((person) => person.status === Status.going)
-        .forEach((person) => (person.currentFloor = newCurrentFloor));
-      currentElevator.currentFloor = newCurrentFloor;
-      currentElevator.targetFloor = newTargetFloor;
-      currentElevator.direction = getDirection(
+      const direction = getDirection(
         newCurrentFloor,
         newTargetFloor,
         currentFloor as number
       );
+      currentElevator.currentFloor = newCurrentFloor;
+      currentElevator.targetFloor = newTargetFloor;
+      currentElevator.direction = direction;
+      currentElevator.waitingPeople
+        .filter((person) => person.status === Status.going)
+        .forEach((person) => (person.currentFloor = newCurrentFloor));
     },
 
     step(elevatorId: number): number {
