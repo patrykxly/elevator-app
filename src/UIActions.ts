@@ -1,4 +1,12 @@
+import { openPeopleQueueDialog } from "./Dialogs";
 import { elevatorSystem } from "./ElevatorSystem";
+import {
+  addBackButtonEventListener,
+  addElevatorButtonEventListener,
+  addElevatorIconEventListener,
+  addStepButtonEventListener,
+  resetStepBtnEventListener,
+} from "./EventListeners";
 import { Elevator } from "./models/ElevatorModel";
 import {
   SVGICON_UP,
@@ -7,8 +15,16 @@ import {
   SVGICON_BACK,
 } from "./SVGIcons";
 
-let currentElevatorNum = 1;
-let currentFloor = 0;
+export let currentElevatorNum = 1;
+export let currentFloor = 0;
+
+export function setCurrentElevatorNum(newNum: number): void {
+  currentElevatorNum = newNum;
+}
+
+export function setCurrentFloor(newFloor: number): void {
+  currentFloor = newFloor;
+}
 
 export function onSelectSubmitClick(): void {
   const chosenElevatorsAmount: number = getChosenElevatorsAmount();
@@ -16,6 +32,18 @@ export function onSelectSubmitClick(): void {
   hideElements("floor-levels-picker-container");
   createElevatorsViews(chosenElevatorsAmount);
   createElevatorsUI();
+}
+
+export function onFloorBtnClick(
+  floorBtn: HTMLElement,
+  clickedFloor: string,
+  icon: Element
+): void {
+  const targetFloor = Number(floorBtn.textContent as string);
+  if (currentFloor !== Number(clickedFloor)) icon.classList.add("waiting");
+
+  addTargetClassToButton(Number(floorBtn.textContent));
+  elevatorSystem.pickup(currentElevatorNum, Number(clickedFloor), targetFloor);
 }
 
 export function createSelectOptions(): void {
@@ -43,6 +71,60 @@ export function deleteWaitingFloorClass(numToDelete: number): void {
       "class",
       "elevator-icon"
     );
+  }
+}
+
+export function setCurrentElevatorFloorOnElevatorChange(): void {
+  resetStepBtnEventListener();
+  const currentElevator: Elevator = elevatorSystem.current(currentElevatorNum);
+  setFloorButtonsAfterElevatorViewChange(currentElevator);
+  currentFloor = currentElevator.currentFloor;
+  const currentFloorElement: Element | undefined = Array.from(
+    document.querySelectorAll(".floor-number")
+  ).find((floorNum: Element) => {
+    return Number(floorNum.textContent as string) === currentFloor;
+  });
+  if (currentFloorElement?.classList.contains("current-floor")) return;
+  else {
+    document.getElementsByClassName("current-floor")[0].className =
+      "floor-number";
+    currentFloorElement?.classList.add("current-floor");
+  }
+}
+
+export function deleteTargetFloorClass(targetFloor: number): void {
+  const targetFloorElement = Array.from(
+    document.querySelectorAll(".floor-number")
+  ).find((floorNum: Element) => {
+    return Number(floorNum.textContent as string) === targetFloor;
+  });
+  if (
+    targetFloorElement?.parentNode?.firstElementChild?.classList.contains(
+      "target"
+    )
+  ) {
+    targetFloorElement.parentNode.firstElementChild.setAttribute(
+      "class",
+      "elevator-icon"
+    );
+  }
+}
+
+export function createElementWithClassName(
+  tagName: string,
+  className: string,
+  innerText?: string
+): HTMLElement {
+  const el: HTMLElement = document.createElement(tagName);
+  el.className = className;
+  if (innerText) el.innerText = innerText;
+  return el;
+}
+
+export function hideElements(...args: string[]): void {
+  for (const el of args) {
+    (document.getElementsByClassName(el)[0] as HTMLElement).style.display =
+      "none";
   }
 }
 
@@ -79,7 +161,7 @@ function createElevatorsUI() {
     "elevator-ui-container"
   );
   createElevatorUIContainer(elevatorUIContainer);
-  addListenerToElevatorIcon("elevator-icon");
+  addElevatorButtonEventListener("elevator-icon");
   elevatorUIWrapper.appendChild(elevatorUIContainer);
   insertAfter(elevatorUIWrapper, titleElement);
   addStepButton(elevatorUIWrapper);
@@ -106,32 +188,23 @@ function createBackButton(): void {
 }
 
 function createQueueButton(): void {
-  if(document.getElementsByClassName('queue-btn').length === 0) {
+  if (document.getElementsByClassName("queue-btn").length === 0) {
     const queueButton: HTMLElement = createElementWithClassName(
       "button",
       "queue-btn",
       "View queue"
     );
     queueButton.addEventListener("click", () => {
-      openPeopleQueue();
+      openPeopleQueueDialog();
     });
-    document.getElementsByClassName("nav-container")[0].appendChild(queueButton);
+    document
+      .getElementsByClassName("nav-container")[0]
+      .appendChild(queueButton);
+  } else {
+    (
+      document.getElementsByClassName("queue-btn")[0] as HTMLElement
+    ).style.display = "block";
   }
-  else {
-    (document.getElementsByClassName('queue-btn')[0] as HTMLElement).style.display = "block";
-  }
-
-}
-
-function createElementWithClassName(
-  tagName: string,
-  className: string,
-  innerText?: string
-): HTMLElement {
-  const el: HTMLElement = document.createElement(tagName);
-  el.className = className;
-  if (innerText) el.innerText = innerText;
-  return el;
 }
 
 function createElevatorUIContainer(elevatorUIContainer: HTMLElement): void {
@@ -179,72 +252,9 @@ function createElevatorViewsButtons(
         String(i)
       );
     }
-    addElevatorViewEventListener(elevatorView);
+    addElevatorIconEventListener(elevatorView);
     elevatorSelectorContainer.appendChild(elevatorView);
   }
-}
-
-function addFloorButtonsInDialog(clickedFloor: string, icon: Element): void {
-  const chooseFloorForm =
-    document.getElementsByClassName("choose-floor-form")[0];
-  const chooseFloorButtonsContainer = createElementWithClassName(
-    "div",
-    "choose-floor-buttons-container"
-  );
-  for (let i = 0; i <= 5; i++) {
-    if (i === Number(clickedFloor)) continue;
-    const floorBtn = createElementWithClassName(
-      "button",
-      "choose-floor-button",
-      String(i)
-    );
-    addFloorBtnEventListener(floorBtn, clickedFloor, icon);
-    chooseFloorButtonsContainer.appendChild(floorBtn);
-  }
-  chooseFloorForm.appendChild(chooseFloorButtonsContainer);
-  chooseFloorForm.insertAdjacentHTML(
-    "beforeend",
-    `
-    <button value="cancel" class="cancel-dialog-btn">Cancel</button>
-  `
-  );
-}
-
-function addFloorBtnEventListener(
-  floorBtn: HTMLElement,
-  clickedFloor: string,
-  icon: Element
-): void {
-  floorBtn.addEventListener("click", () =>
-    onFloorBtnClick(floorBtn, clickedFloor, icon)
-  );
-}
-
-function addBackButtonEventListener(backBtnElement: HTMLElement): void {
-  backBtnElement.addEventListener("click", () => {
-    (
-      document.getElementsByClassName(
-        "floor-levels-picker-container"
-      )[0] as HTMLElement
-    ).style.display = "block";
-    hideElements(
-      "elevator-selector-container",
-      "elevator-ui-wrapper",
-      "back-btn",
-      "queue-btn"
-    );
-    closeModalDialog();
-  });
-}
-
-function addElevatorViewEventListener(elevatorView: HTMLElement): void {
-  elevatorView.addEventListener("click", () => {
-    document.getElementsByClassName("current-elevator")[0].className =
-      "elevator-view";
-    elevatorView.classList.add("current-elevator");
-    currentElevatorNum = Number(elevatorView.textContent as string);
-    setCurrentElevatorFloorOnElevatorChange();
-  });
 }
 
 function addStepButton(elementBeforeBtn: HTMLElement): void {
@@ -255,10 +265,6 @@ function addStepButton(elementBeforeBtn: HTMLElement): void {
   );
   addStepButtonEventListener(stepButton);
   elementBeforeBtn.appendChild(stepButton);
-}
-
-function addStepButtonEventListener(stepButton: HTMLElement): void {
-  stepButton.addEventListener("click", setNextFloor);
 }
 
 function addTargetClassToButton(floorNum: number): void {
@@ -273,62 +279,6 @@ function addWaitingClassToButton(floorNum: number): void {
     ?.parentNode?.firstElementChild?.classList.add("waiting");
 }
 
-function addListenerToElevatorIcon(iconClassName: string): void {
-  setTimeout(() => {
-    document.querySelectorAll(`.${iconClassName}`).forEach((icon) => {
-      icon.addEventListener("click", () => {
-        const clickedFloor = icon.parentNode?.lastElementChild?.textContent;
-        openModalDialog(clickedFloor as string, icon);
-      });
-    });
-  }, 0);
-}
-
-function addContentToQueueDialog(): void {
-  const queueDialog = document.getElementById("queue-dialog");
-  const closeButton: HTMLElement = getCloseQueueButton(queueDialog as HTMLDialogElement);
-  queueDialog?.insertAdjacentElement('afterbegin', closeButton);
-  const waitingPeople = elevatorSystem.peopleQueue(currentElevatorNum);
-  waitingPeople.forEach((person, index) => {
-    const waitingPeopleContainer = createElementWithClassName(
-      "div",
-      "waiting-people-container"
-    );
-    const personNum = createElementWithClassName('p', 'person-num', String(index)+".");
-    const personCurrentFloor = createElementWithClassName(
-      "div",
-      "person-current-floor",
-      "Current floor - " + String(person.currentFloor)
-    );
-    const personTargetFloor = createElementWithClassName(
-      "div",
-      "person-current-floor",
-      "Target floor - " + String(person.targetFloor)
-    );
-    waitingPeopleContainer.append(personNum, personCurrentFloor, personTargetFloor);
-    queueDialog?.append(waitingPeopleContainer);
-  });
-}
-
-function getCloseQueueButton(queueDialog: HTMLDialogElement): HTMLElement {
-  const closeButton: HTMLElement = createElementWithClassName(
-    "button",
-    "queue-dialog-close-btn",
-    "x"
-  );
-  closeButton.addEventListener("click", () => {
-    queueDialog.close();
-  });
-  return closeButton;
-}
-
-function hideElements(...args: string[]): void {
-  for (const el of args) {
-    (document.getElementsByClassName(el)[0] as HTMLElement).style.display =
-      "none";
-  }
-}
-
 function getChosenElevatorsAmount(): number {
   const selectList = document.getElementById("floor-levels-options");
   return Number((selectList as HTMLInputElement).value);
@@ -339,89 +289,6 @@ function insertAfter(
   referenceNode: HTMLElement | null
 ): void {
   referenceNode?.parentNode?.insertBefore(newNode, referenceNode.nextSibling);
-}
-
-function openModalDialog(clickedFloor: string, icon: Element): void {
-  const mainEl = document.getElementsByTagName("main")[0] as HTMLElement;
-  mainEl.insertAdjacentHTML(
-    "afterbegin",
-    `
-    <dialog id = "choose-floor-dialog" open>
-      <h3>Choose the floor</h3>
-      <form method="dialog" class = "choose-floor-form">
-      </form>
-    </dialog>
-  `
-  );
-  addFloorButtonsInDialog(clickedFloor, icon);
-}
-
-function closeModalDialog(): void {
-  const dialogElement = document.getElementById(
-    "choose-floor-dialog"
-  ) as HTMLDialogElement;
-  if (!dialogElement) return;
-  dialogElement.close();
-}
-
-function openPeopleQueue(): void {
-  const mainEl = document.getElementsByTagName("main")[0] as HTMLElement;
-  mainEl.insertAdjacentHTML(
-    "afterbegin",
-    `
-    <dialog id = "queue-dialog" open>
-      <h3>Queue</h3>
-    </dialog>
-  `
-  );
-  addContentToQueueDialog();
-}
-
-function onFloorBtnClick(
-  floorBtn: HTMLElement,
-  clickedFloor: string,
-  icon: Element
-): void {
-  const targetFloor = Number(floorBtn.textContent as string);
-  if (currentFloor !== Number(clickedFloor)) icon.classList.add("waiting");
-
-  addTargetClassToButton(Number(floorBtn.textContent));
-  elevatorSystem.pickup(currentElevatorNum, Number(clickedFloor), targetFloor);
-}
-
-function setCurrentElevatorFloorOnElevatorChange(): void {
-  resetStepBtnEventListener();
-  const currentElevator: Elevator = elevatorSystem.current(currentElevatorNum);
-  setFloorButtonsAfterElevatorViewChange(currentElevator);
-  currentFloor = currentElevator.currentFloor;
-  const currentFloorElement: Element | undefined = Array.from(
-    document.querySelectorAll(".floor-number")
-  ).find((floorNum: Element) => {
-    return Number(floorNum.textContent as string) === currentFloor;
-  });
-  if (currentFloorElement?.classList.contains("current-floor")) return;
-  else {
-    document.getElementsByClassName("current-floor")[0].className =
-      "floor-number";
-    currentFloorElement?.classList.add("current-floor");
-  }
-}
-
-function setNextFloor(): void {
-  currentFloor = elevatorSystem.step(currentElevatorNum);
-  setNewCurrentFloorAndDeleteWaitingFloor(currentFloor);
-}
-
-function setNewCurrentFloorAndDeleteWaitingFloor(currentFloor: number): void {
-  document.getElementsByClassName("current-floor")[0].className =
-    "floor-number";
-  const newCurrentFloor = Array.from(
-    document.querySelectorAll(".floor-number")
-  ).find((floorNum: Element) => {
-    return Number(floorNum.textContent as string) === currentFloor;
-  });
-  newCurrentFloor?.classList.add("current-floor");
-  deleteWaitingFloorClass(currentFloor);
 }
 
 function setFloorButtonsAfterElevatorViewChange(
@@ -441,28 +308,4 @@ function resetValues(elevatorsAmount: number): void {
   currentElevatorNum = 1;
   currentFloor = 0;
   elevatorSystem.resetSystem(elevatorsAmount);
-}
-
-function resetStepBtnEventListener(): void {
-  const stepBtn = document.querySelectorAll(".step-btn")[0] as HTMLElement;
-  stepBtn.removeEventListener("click", setNextFloor);
-  addStepButtonEventListener(stepBtn);
-}
-
-export function deleteTargetFloorClass(targetFloor: number): void {
-  const targetFloorElement = Array.from(
-    document.querySelectorAll(".floor-number")
-  ).find((floorNum: Element) => {
-    return Number(floorNum.textContent as string) === targetFloor;
-  });
-  if (
-    targetFloorElement?.parentNode?.firstElementChild?.classList.contains(
-      "target"
-    )
-  ) {
-    targetFloorElement.parentNode.firstElementChild.setAttribute(
-      "class",
-      "elevator-icon"
-    );
-  }
 }
